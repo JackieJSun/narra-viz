@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Turnout Rate Chart</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body {
+      display: flex;
+      font-family: sans-serif;
+      margin: 0;
+    }
+    #left-panel {
+      width: 30%;
+      padding: 1em;
+    }
+    #chart-panel {
+      width: 70%;
+      padding: 1em;
+      display: flex;
+      flex-direction: column;
+    }
+    svg {
+      width: 100%;
+      height: 500px;
+    }
+    #details-and-controls {
+      display: flex;
+      margin-top: 1em;
+      gap: 2em;
+      align-items: flex-start;
+      max-width: 700px;
+      margin-left: 0;
+      padding-right: 2em;
+    }
+    #controls {
+      display: flex;
+      flex-direction: column;
+      gap: 1em;
+      min-width: 180px;
+      margin-left: 1em;
+    }
+    .checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4em;
+    }
+    #chart-type-buttons {
+      margin-bottom: 1em;
+      display: flex;
+      gap: 1em;
+    }
+    #chart-type-buttons button {
+      padding: 0.5em 1em;
+      font-size: 1em;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="left-panel">
+    <h2 id="analysis-title">Analysis</h2>
+    <p id="analysis-text">
+      The turnout rate for racial demographics in U.S. presidential elections from 1986 to 2022 is shown below. Each race is represented by a different color.
+    </p>
+  </div>
+  <div id="chart-panel">
+    <div id="chart-type-buttons">
+      <button id="btn-ethnicity" aria-pressed="true">Ethnicity</button>
+      <button id="btn-age" aria-pressed="false">Age Range</button>
+      <button id="btn-education" aria-pressed="false">Education</button>
+    </div>
+    <svg></svg>
+    <div id="details-and-controls">
+      <div id="details">Hover over a point to see details.</div>
+      <div id="controls">
+        <div class="checkbox-group" id="toggle-checkboxes">
+          <!-- checkboxes go here dynamically -->
+        </div>
+        <button id="toggleMode">Share of Electorate</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // === Data ===
+  const ethnicityData = [
+  {
+    name: "Non-Hispanic White",
+    color: "steelblue",
+    data: [
+    { year: 1986, turnout: 49.7, share: 84.7 },
+    { year: 1988, turnout: 63.4, share: 84.9 },
+    { year: 1990, turnout: 49.9, share: 85.2 },
+    { year: 1992, turnout: 68.2, share: 84.6 },
+    { year: 1994, turnout: 51.0, share: 84.7 },
+    { year: 1996, turnout: 60.7, share: 82.5 },
+    { year: 1998, turnout: 47.4, share: 81.9 },
+    { year: 2000, turnout: 61.8, share: 80.7 },
+    { year: 2002, turnout: 48.8, share: 81.5 },
+    { year: 2004, turnout: 67.2, share: 79.2 },
+    { year: 2006, turnout: 51.6, share: 80.4 },
+    { year: 2008, turnout: 66.1, share: 76.3 },
+    { year: 2010, turnout: 48.6, share: 77.5 },
+    { year: 2012, turnout: 64.1, share: 73.7 },
+    { year: 2014, turnout: 45.8, share: 76.3 },
+    { year: 2016, turnout: 65.3, share: 73.3 },
+    { year: 2018, turnout: 57.5, share: 72.8 },
+    { year: 2020, turnout: 70.9, share: 71.0 },
+    { year: 2022, turnout: 57.6, share: 73.3 }
+    ]
+  },
+  {
+    name: "Non-Hispanic Black",
+    color: "red",
+    data: [
+    { year: 1986, turnout: 44.7, share: 10.2 },
+    { year: 1988, turnout: 53.6, share: 9.9 },
+    { year: 1990, turnout: 40.8, share: 9.7 },
+    { year: 1992, turnout: 57.0, share: 9.9 },
+    { year: 1994, turnout: 39.0, share: 9.4 },
+    { year: 1996, turnout: 53.0, share: 10.6 },
+    { year: 1998, turnout: 41.9, share: 10.9 },
+    { year: 2000, turnout: 56.9, share: 11.5 },
+    { year: 2002, turnout: 42.5, share: 11.0 },
+    { year: 2004, turnout: 60.3, share: 11.2 },
+    { year: 2006, turnout: 41.2, share: 10.3 },
+    { year: 2008, turnout: 65.2, share: 12.4 },
+    { year: 2010, turnout: 43.8, share: 11.7 },
+    { year: 2012, turnout: 66.4, share: 13.4 },
+    { year: 2014, turnout: 40.4, share: 12.1 },
+    { year: 2016, turnout: 59.3, share: 12.4 },
+    { year: 2018, turnout: 50.9, share: 12.4 },
+    { year: 2020, turnout: 62.7, share: 12.4 },
+    { year: 2022, turnout: 45.2, share: 11.4 }
+    ]
+  },
+  {
+    name: "Hispanic",
+    color: "green",
+    data: [
+    { year: 1986, turnout: 36.4, share: 3.6 },
+    { year: 1988, turnout: 29.5, share: 3.6 },
+    { year: 1990, turnout: 33.8, share: 3.5 },
+    { year: 1992, turnout: 48.3, share: 3.7 },
+    { year: 1994, turnout: 34.4, share: 4.1 },
+    { year: 1996, turnout: 44.0, share: 4.7 },
+    { year: 1998, turnout: 32.8, share: 4.9 },
+    { year: 2000, turnout: 45.1, share: 5.4 },
+    { year: 2002, turnout: 31.2, share: 5.2 },
+    { year: 2004, turnout: 47.2, share: 6.0 },
+    { year: 2006, turnout: 32.3, share: 5.8 },
+    { year: 2008, turnout: 49.9, share: 7.4 },
+    { year: 2010, turnout: 31.2, share: 6.9 },
+    { year: 2012, turnout: 48.0, share: 8.4 },
+    { year: 2014, turnout: 27.0, share: 7.3 },
+    { year: 2016, turnout: 47.6, share: 9.2 },
+    { year: 2018, turnout: 40.4, share: 9.6 },
+    { year: 2020, turnout: 53.7, share: 10.6 },
+    { year: 2022, turnout: 37.9, share: 9.7 }
+    ]
+  },
+  {
+    name: "Other",
+    color: "purple",
+    data: [
+    { year: 1986, turnout: 39.6, share: 1.5 },
+    { year: 1988, turnout: 31.9, share: 1.7 },
+    { year: 1990, turnout: 35.9, share: 1.6 },
+    { year: 1992, turnout: 50.6, share: 1.7 },
+    { year: 1994, turnout: 39.4, share: 1.8 },
+    { year: 1996, turnout: 45.8, share: 2.2 },
+    { year: 1998, turnout: 33.1, share: 2.3 },
+    { year: 2000, turnout: 44.1, share: 2.4 },
+    { year: 2002, turnout: 31.3, share: 2.4 },
+    { year: 2004, turnout: 48.0, share: 3.6 },
+    { year: 2006, turnout: 33.4, share: 3.4 },
+    { year: 2008, turnout: 49.5, share: 3.9 },
+    { year: 2010, turnout: 34.1, share: 3.9 },
+    { year: 2012, turnout: 49.0, share: 4.5 },
+    { year: 2014, turnout: 29.5, share: 4.3 },
+    { year: 2016, turnout: 49.0, share: 5.0 },
+    { year: 2018, turnout: 42.0, share: 6.6 },
+    { year: 2020, turnout: 59.0, share: 6.0 },
+    { year: 2022, turnout: 41.5, share: 5.7 }
+    ]
+  }
+  ];
+
+
+  const ageData = [
+  {
+    name: "18-29",
+    color: "steelblue",
+    data: [
+    { year: 1986, turnout: 27.6, share: 15.5 },
+    { year: 1988, turnout: 40.5, share: 18.1 },
+    { year: 1990, turnout: 26.5, share: 13.5 },
+    { year: 1992, turnout: 50.6, share: 17.7 },
+    { year: 1994, turnout: 26.2, share: 12.2 },
+    { year: 1996, turnout: 39.6, share: 14.9 },
+    { year: 1998, turnout: 22.3, share: 10.6 },
+    { year: 2000, turnout: 40.3, share: 14.3 },
+    { year: 2002, turnout: 22.5, share: 10.2 },
+    { year: 2004, turnout: 49.0, share: 16.0 },
+    { year: 2006, turnout: 25.5, share: 11.2 },
+    { year: 2008, turnout: 51.1, share: 17.1 },
+    { year: 2010, turnout: 24.0, share: 11.3 },
+    { year: 2012, turnout: 45.0, share: 15.5 },
+    { year: 2014, turnout: 19.9, share: 10.0 },
+    { year: 2016, turnout: 46.1, share: 15.7 },
+    { year: 2018, turnout: 35.6, share: 13.8 },
+    { year: 2020, turnout: 54.1, share: 16.5 },
+    { year: 2022, turnout: 31.2, share: 11.7 }
+    ]
+  },
+  {
+    name: "30-44",
+    color: "red",
+    data: [
+    { year: 1986, turnout: 48.4, share: 30.6 },
+    { year: 1988, turnout: 59.2, share: 32.1 },
+    { year: 1990, turnout: 47.8, share: 32.6 },
+    { year: 1992, turnout: 65.9, share: 33.1 },
+    { year: 1994, turnout: 46.5, share: 31.8 },
+    { year: 1996, turnout: 56.9, share: 31.8 },
+    { year: 1998, turnout: 41.8, share: 29.3 },
+    { year: 2000, turnout: 58.5, share: 30.2 },
+    { year: 2002, turnout: 42.2, share: 27.1 },
+    { year: 2004, turnout: 62.4, share: 27.3 },
+    { year: 2006, turnout: 43.0, share: 23.9 },
+    { year: 2008, turnout: 61.8, share: 24.8 },
+    { year: 2010, turnout: 40.4, share: 21.9 },
+    { year: 2012, turnout: 59.5, share: 23.1 },
+    { year: 2014, turnout: 35.6, share: 20.3 },
+    { year: 2016, turnout: 58.8, share: 22.5 },
+    { year: 2018, turnout: 48.8, share: 21.6 },
+    { year: 2020, turnout: 64.4, share: 23.2 },
+    { year: 2022, turnout: 46.9, share: 22.1 }
+    ]
+  },
+  {
+    name: "45-59",
+    color: "green",
+    data: [
+    { year: 1986, turnout: 59.3, share: 24.2 },
+    { year: 1988, turnout: 69.2, share: 23.1 },
+    { year: 1990, turnout: 57.4, share: 24.0 },
+    { year: 1992, turnout: 73.0, share: 23.6 },
+    { year: 1994, turnout: 58.9, share: 26.7 },
+    { year: 1996, turnout: 67.2, share: 26.6 },
+    { year: 1998, turnout: 55.2, share: 29.7 },
+    { year: 2000, turnout: 66.9, share: 28.9 },
+    { year: 2002, turnout: 55.0, share: 32.1 },
+    { year: 2004, turnout: 70.0, share: 30.6 },
+    { year: 2006, turnout: 56.0, share: 33.5 },
+    { year: 2008, turnout: 68.5, share: 30.6 },
+    { year: 2010, turnout: 52.6, share: 32.6 },
+    { year: 2012, turnout: 66.9, share: 29.9 },
+    { year: 2014, turnout: 47.3, share: 30.2 },
+    { year: 2016, turnout: 65.9, share: 28.2 },
+    { year: 2018, turnout: 57.8, share: 27.3 },
+    { year: 2020, turnout: 70.0, share: 25.1 },
+    { year: 2022, turnout: 56.6, share: 25.5 }
+    ]
+  },
+  {
+    name: "60+",
+    color: "purple",
+    data: [
+    { year: 1986, turnout: 63.3, share: 29.8 },
+    { year: 1988, turnout: 71.4, share: 26.8 },
+    { year: 1990, turnout: 61.9, share: 29.8 },
+    { year: 1992, turnout: 73.1, share: 25.7 },
+    { year: 1994, turnout: 63.4, share: 29.3 },
+    { year: 1996, turnout: 69.9, share: 26.8 },
+    { year: 1998, turnout: 61.6, share: 30.4 },
+    { year: 2000, turnout: 70.2, share: 26.5 },
+    { year: 2002, turnout: 62.5, share: 30.6 },
+    { year: 2004, turnout: 71.4, share: 26.1 },
+    { year: 2006, turnout: 63.1, share: 31.4 },
+    { year: 2008, turnout: 70.8, share: 27.6 },
+    { year: 2010, turnout: 60.8, share: 34.3 },
+    { year: 2012, turnout: 71.8, share: 31.5 },
+    { year: 2014, turnout: 58.7, share: 39.5 },
+    { year: 2016, turnout: 70.3, share: 33.6 },
+    { year: 2018, turnout: 65.7, share: 37.3 },
+    { year: 2020, turnout: 74.3, share: 35.3 },
+    { year: 2022, turnout: 65.8, share: 40.7 }
+    ]
+  }
+  ];
+
+  const educationData = [
+  {
+    name: "Less Than High School",
+    color: "steelblue",
+    data: [
+    { year: 1986, turnout: 36.6, share: 17.1 },
+    { year: 1988, turnout: 40.3, share: 15.4 },
+    { year: 1990, turnout: 33.5, share: 13.9 },
+    { year: 1992, turnout: 45.0, share: 12.3 },
+    { year: 1994, turnout: 30.8, share: 10.7 },
+    { year: 1996, turnout: 38.8, share: 10.8 },
+    { year: 1998, turnout: 29.6, share: 10.1 },
+    { year: 2000, turnout: 38.4, share: 9.2 },
+    { year: 2002, turnout: 27.8, share: 8.1 },
+    { year: 2004, turnout: 39.5, share: 8.1 },
+    { year: 2006, turnout: 27.4, share: 7.0 },
+    { year: 2008, turnout: 39.4, share: 6.9 },
+    { year: 2010, turnout: 25.1, share: 5.9 },
+    { year: 2012, turnout: 38.0, share: 6.2 },
+    { year: 2014, turnout: 22.2, share: 5.1 },
+    { year: 2016, turnout: 34.3, share: 5.1 },
+    { year: 2018, turnout: 27.2, share: 4.2 },
+    { year: 2020, turnout: 40.4, share: 4.6 },
+    { year: 2022, turnout: 25.9, share: 3.6 }
+    ]
+  },
+  {
+    name: "High School Grad",
+    color: "red",
+    data: [
+    { year: 1986, turnout: 46.1, share: 34.9 },
+    { year: 1988, turnout: 56.4, share: 33.9 },
+    { year: 1990, turnout: 44.2, share: 33.5 },
+    { year: 1992, turnout: 60.1, share: 33.0 },
+    { year: 1994, turnout: 42.9, share: 30.9 },
+    { year: 1996, turnout: 51.7, share: 30.5 },
+    { year: 1998, turnout: 39.2, share: 29.3 },
+    { year: 2000, turnout: 52.5, share: 29.6 },
+    { year: 2002, turnout: 39.5, share: 28.6 },
+    { year: 2004, turnout: 56.4, share: 28.6 },
+    { year: 2006, turnout: 40.6, share: 27.4 },
+    { year: 2008, turnout: 54.9, share: 27.4 },
+    { year: 2010, turnout: 37.9, share: 26.1 },
+    { year: 2012, turnout: 52.6, share: 25.9 },
+    { year: 2014, turnout: 33.9, share: 24.1 },
+    { year: 2016, turnout: 51.6, share: 24.6 },
+    { year: 2018, turnout: 42.1, share: 22.7 },
+    { year: 2020, turnout: 55.5, share: 24.2 },
+    { year: 2022, turnout: 40.5, share: 22.3 }
+    ]
+  },
+  {
+    name: "Some College to College Grad",
+    color: "green",
+    data: [
+    { year: 1986, turnout: 53.8, share: 36.6 },
+    { year: 1988, turnout: 68.1, share: 38.7 },
+    { year: 1990, turnout: 53.8, share: 39.6 },
+    { year: 1992, turnout: 75.9, share: 45.7 },
+    { year: 1994, turnout: 55.8, share: 48.1 },
+    { year: 1996, turnout: 67.1, share: 48.7 },
+    { year: 1998, turnout: 51.6, share: 49.2 },
+    { year: 2000, turnout: 67.6, share: 50.5 },
+    { year: 2002, turnout: 52.5, share: 51.3 },
+    { year: 2004, turnout: 72.2, share: 52.1 },
+    { year: 2006, turnout: 53.9, share: 52.6 },
+    { year: 2008, turnout: 71.5, share: 54.0 },
+    { year: 2010, turnout: 50.7, share: 53.8 },
+    { year: 2012, turnout: 68.4, share: 54.8 },
+    { year: 2014, turnout: 46.2, share: 54.9 },
+    { year: 2016, turnout: 67.8, share: 55.7 },
+    { year: 2018, turnout: 59.3, share: 56.5 },
+    { year: 2020, turnout: 73.2, share: 55.8 },
+    { year: 2022, turnout: 57.7, share: 56.1 }
+    ]
+  },
+  {
+    name: "Post-Graduate",
+    color: "purple",
+    data: [
+    { year: 1986, turnout: 69.1, share: 11.5 },
+    { year: 1988, turnout: 83.0, share: 12.1 },
+    { year: 1990, turnout: 70.1, share: 13.0 },
+    { year: 1992, turnout: 88.3, share: 9.0 },
+    { year: 1994, turnout: 75.2, share: 10.4 },
+    { year: 1996, turnout: 83.3, share: 10.1 },
+    { year: 1998, turnout: 68.5, share: 11.4 },
+    { year: 2000, turnout: 81.9, share: 10.7 },
+    { year: 2002, turnout: 69.0, share: 12.0 },
+    { year: 2004, turnout: 84.2, share: 11.3 },
+    { year: 2006, turnout: 69.6, share: 13.0 },
+    { year: 2008, turnout: 82.7, share: 11.8 },
+    { year: 2010, turnout: 67.1, share: 14.2 },
+    { year: 2012, turnout: 81.4, share: 13.1 },
+    { year: 2014, turnout: 62.0, share: 15.9 },
+    { year: 2016, turnout: 80.3, share: 14.6 },
+    { year: 2018, turnout: 74.0, share: 16.5 },
+    { year: 2020, turnout: 83.0, share: 15.4 },
+    { year: 2022, turnout: 71.0, share: 18.1 }
+    ]
+  }
+  ];
+
+
+
+  // Analysis text for each chart type
+  const analysisTexts = {
+    ethnicity: {
+      title: "Ethnicity Analysis",
+      text: "The turnout rate for racial demographics in U.S. presidential elections from 1986 to 2022 is shown below. Each race is represented by a different color. Non-Hispanic White voters have the highest turnout, while voters labeled Hispanic or Other have the lowest. Non-Hispanic Black turnout was highest during the 2008 and 2012 elections, when Barack Obama was on the ticket. It was also high during the 2020 election, when the Democratic vice presidential nominee was Kamala Harris. We can also see a zig-zag pattern in the chart, indicating how midterm elections typically have much lower turnout than presidential elections. \nBy clicking the Share of Electorate button below the demographic toggle options, we can also see how Non-Hispanic White voters make up the majority of the electorate, though this is slowly trending down as American becomes a more diverse nation. Click Age Range or Education at the top of the screen to proceed to the analysis of other demographic types."
+    },
+    age: {
+      title: "Age Range Analysis",
+      text: "The turnout rate for different age groups in U.S. presidential elections from 1986 to 2022 is shown below. The younger a voter is, the lower their turnout. We can also see that younger voters have the largest difference between their presidential election turnout and their midterm election turnout. The lack of younger voter turnout also means they are excluded from the electorate calculation, which is why their numbers are so low in the Share of Electorate view. The 60+ age range recently took over as the highest share of the electorate. This group is the baby boomer generation, who dominate the younger Generation X in terms of population."
+    },
+    education: {
+      title: "Education Level Analysis",
+      text: "The turnout rate for different education levels in U.S. presidential elections from 1986 to 2022 is shown below. Higher education levels generally correlate with higher turnout. Post-graduate voters have the highest turnout out of any demographic group in this analysis, indicating how highly educated viewers might be motivated to participate in civil society. After swapping over to the Share of Electorate view, we see that share is increasing for the demographics who have attended college, and decreasing for the demographics that did not attend college. This indicates how a college degree is becoming more and more sought after, as competition in the job market becomes harder without one. "
+    }
+  };
+
+  const annotations = {
+    "ethnicity_turnout": [
+      {year: 2010, text: "2008 and 2012: Barack Obama runs for president", yOffset: 60, color: "red"}
+    ],
+    "ethnicity_share": [
+      {year: 2020, text: "Non-Hispanic White voters are becoming a smaller share of the electorate as time goes on.", yOffset: 60, color: "steelblue"}
+    ],
+    "age_turnout": [
+      {year: 2014, text: "Young voters have the largest gap between their midterm and presidential election turnout.", yOffset: 375, color: "steelblue"}
+    ],
+    "age_share": [
+      {year: 2022, text: "The baby boomer generation, one of the largest in America, aged into the 60+ demographic.", yOffset: 240, color: "purple" }
+    ],
+    "education_turnout": [
+      {year: 2014, text: "Voters without a high school diploma vote the least out of any education demographic.", yOffset: 375, color: "steelblue"}
+    ],
+    "education_share": [
+      {year: 2022, text: "Voters with any college education care becoming a larger share of the electorate.", yOffset: 150, color: "green"}
+    ]
+  };
+
+  let currentDataset = "ethnicity";
+  let currentMode = "turnout";
+
+  const svg = d3.select("svg");
+  const margin = { top: 40, right: 30, bottom: 40, left: 60 };
+  const width = 800 - margin.left - margin.right;
+  const height = 500 - margin.top - margin.bottom;
+
+  const chart = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+  const x = d3.scaleLinear().domain([1986, 2022]).range([0, width]);
+  const y = d3.scaleLinear().range([height, 0]);
+
+  const xAxis = chart.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x).tickFormat(d3.format("d")));
+  const yAxis = chart.append("g");
+
+  // function to get data by currentDataset string
+  function getCurrentData() {
+    if (currentDataset === "ethnicity") return ethnicityData;
+    if (currentDataset === "age") return ageData;
+    if (currentDataset === "education") return educationData;
+    return ethnicityData;
+  }
+
+  // update checkboxes for current dataset
+  function updateCheckboxes() {
+    const container = d3.select("#toggle-checkboxes");
+    container.html(""); // clear old checkboxes
+    const dataSet = getCurrentData();
+    dataSet.forEach(group => {
+      container.append("label")
+      .html(`<input type="checkbox" class="data-toggle" value="${group.name}" checked> ${group.name}`)
+      .style("color", group.color);
+    });
+
+    d3.selectAll(".data-toggle").on("change", updateChart);
+  }
+
+  function updateChart() {
+    y.domain(currentMode === "turnout" ? [15, 85] : [0, 100]);
+    yAxis.call(d3.axisLeft(y).tickFormat(d => d + "%"));
+
+    // remove previous lines,points
+    chart.selectAll(".line-group").remove();
+
+    const dataSet = getCurrentData();
+
+    dataSet.forEach(group => {
+      const checkbox = document.querySelector(`input[type="checkbox"][value="${group.name}"]`);
+      if (!checkbox || !checkbox.checked) return;
+
+      const line = d3.line().x(d => x(d.year)).y(d => y(d[currentMode]));
+
+      const groupG = chart.append("g").attr("class", "line-group");
+
+      groupG.append("path")
+        .datum(group.data)
+        .attr("fill", "none")
+        .attr("stroke", group.color)
+        .attr("stroke-width", 2)
+        .attr("d", line);
+
+      groupG.selectAll("circle")
+        .data(group.data)
+        .enter()
+        .append("circle")
+        .attr("cx", d => x(d.year))
+        .attr("cy", d => y(d[currentMode]))
+        .attr("r", 4)
+        .attr("fill", group.color)
+        .on("mouseover", (event, d) => {
+          d3.select("#details").html(
+          `<strong>${group.name} in ${d.year}</strong><br>` +
+          `Turnout Rate: ${d.turnout}%<br>` +
+          `Share of Electorate: ${d.share}%`
+          );
+        })
+        .on("mouseout", () => {
+          d3.select("#details").text("Hover over a point to see details.");
+        });
+      });
+
+      renderAnnotations();
+    }
+
+    // Buttons to switch datasets
+    document.getElementById("btn-ethnicity").addEventListener("click", () => {
+      if (currentDataset === "ethnicity") return;
+      currentDataset = "ethnicity";
+      updateUIForDataset();
+    });
+
+    document.getElementById("btn-age").addEventListener("click", () => {
+      if (currentDataset === "age") return;
+      currentDataset = "age";
+      updateUIForDataset();
+    });
+
+    document.getElementById("btn-education").addEventListener("click", () => {
+      if (currentDataset === "education") return;
+      currentDataset = "education";
+      updateUIForDataset();
+    });
+
+    function updateUIForDataset() {
+      // Update analysis title & text
+      const info = analysisTexts[currentDataset];
+      d3.select("#analysis-title").text(info.title);
+      d3.select("#analysis-text").text(info.text);
+
+      // Update checkboxes
+      updateCheckboxes();
+
+      // Reset toggleMode button text and currentMode to default "share"
+      currentMode = "turnout";
+      d3.select("#toggleMode").text("Share of Electorate");
+
+      // Update aria-pressed for buttons
+      d3.selectAll("#chart-type-buttons button")
+        .attr("aria-pressed", "false");
+      d3.select(`#btn-${currentDataset}`).attr("aria-pressed", "true");
+
+      // Update chart
+      updateChart();
+    }
+
+    // Toggle mode button
+    document.getElementById("toggleMode").addEventListener("click", () => {
+      currentMode = currentMode === "turnout" ? "share" : "turnout";
+      document.getElementById("toggleMode").textContent = currentMode === "turnout" ? "Share of Electorate" : "Turnout Rate";
+      updateChart();
+    });
+
+    updateUIForDataset();
+
+    function renderAnnotations() {
+      chart.selectAll(".annotation").remove(); // clear previous annotations
+
+      const key = `${currentDataset}_${currentMode}`;
+      if (!annotations[key]) return;
+
+      annotations[key].forEach(a => {
+        chart.append("text")
+          .attr("class", "annotation")
+          .attr("x", x(a.year))
+          .attr("y", y( (currentMode === "turnout" ? 80 : 100) ) + a.yOffset)
+          .attr("text-anchor", "middle")
+          .attr("fill", a.color || "black")
+          .attr("font-size", "12px")
+          .text(a.text);
+      });
+
+    }
+  </script>
+</body>
+</html>
